@@ -6,3 +6,8 @@ psycopg2
 pydantic
 redis
 googletrans==4.0.0-rc1
+pydantic_settings
+loguru
+alembic
+asyncpg
+greenlet
