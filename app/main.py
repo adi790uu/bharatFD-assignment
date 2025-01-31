@@ -1,5 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
+
+from fastapi.responses import JSONResponse
+
+from app.exceptions.exception import CustomException
+from app.schemas.response import APIResponse, ErrorResponse
 
 
 @asynccontextmanager
@@ -14,4 +19,34 @@ app = FastAPI(title="BharatFD", lifespan=lifespan)
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the server!"}
+    api_response = APIResponse(
+        success=True,
+        message="Server running successfully!",
+    )
+    return JSONResponse(status_code=200, content=api_response.model_dump())
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exception: Exception):
+    if isinstance(exception, CustomException):
+        error_response = ErrorResponse(
+            success=False, message=exception.message, error=exception.name
+        )
+        status_code = exception.status_code
+    elif isinstance(exception, HTTPException):
+        error_response = ErrorResponse(
+            success=False, message=exception.detail, error="HTTPException"
+        )
+        status_code = exception.status_code
+    else:
+        error_response = ErrorResponse(
+            success=False,
+            message="An unexpected error occurred.",
+            error=str(exception),
+        )
+        status_code = 500
+
+    return JSONResponse(
+        status_code=status_code,
+        content=error_response.model_dump(),
+    )
