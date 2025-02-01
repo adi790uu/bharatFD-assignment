@@ -22,3 +22,12 @@ async def create_faq(question: str, answer: str, db: AsyncSession):
     except Exception as e:
         logger.error(e)
         raise e
+
+
+async def get_all_faqs_by_language(db: AsyncSession, lang: str):
+    try:
+        faqs = await FAQModel.get_translated_text(lang=lang, db=db)
+        return faqs
+    except Exception as e:
+        logger.error(e)
+        raise e

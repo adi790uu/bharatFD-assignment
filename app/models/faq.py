@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
-from sqlalchemy.orm import relationship
+from fastapi import HTTPException
+from loguru import logger
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, select
+from sqlalchemy.orm import relationship, selectinload
 from app.database.base import Base
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,17 +24,33 @@ class FAQ(Base):
         await db.refresh(faq_instance)
         return faq_instance
 
-    def get_translated_text(self, lang: str) -> dict:
-        for translation in self.translations:
-            if translation.language == lang:
-                return {
-                    "question": translation.translated_question,
-                    "answer": translation.translated_answer,
-                }
-        return {
-            "question": self.question,
-            "answer": self.answer,
-        }
+    @classmethod
+    async def get_translated_text(cls, lang: str, db: AsyncSession) -> dict:
+
+        faq_instance = await db.execute(
+            select(cls).options(selectinload(cls.translations))
+        )
+
+        faqs_instances = faq_instance.scalars().all()
+        if not faq_instance:
+            raise HTTPException(status_code=400)
+
+        translated_faqs = []
+
+        for faq_instance in faqs_instances:
+            for translation in faq_instance.translations:
+                logger.info(translation.language)
+                logger.info(f"lang: {lang}")
+                if translation.language == lang:
+                    logger.info("Here")
+                    translated_faqs.append(
+                        {
+                            "question": translation.translated_question,
+                            "answer": translation.translated_answer,
+                        }
+                    )
+        logger.info(translated_faqs)
+        return translated_faqs
 
 
 class FAQTranslation(Base):

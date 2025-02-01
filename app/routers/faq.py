@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from loguru import logger
 from app.core.deps import get_db
@@ -34,9 +34,19 @@ async def create_faq(request: CreateFAQRequest, db=Depends(get_db)):
 
 
 @router.get("/faqs/")
-async def get_faqs(request: Request, db=Depends(get_db)):
+async def get_faqs(lang: str = "en", db=Depends(get_db)):
     try:
-        pass
+        faqs = await faq_service.get_all_faqs_by_language(db=db, lang=lang)
+        api_response = APIResponse(
+            success=True,
+            message="Faqs fetched successfully!",
+            data={
+                "faqs": faqs,
+            },
+        )
+        return JSONResponse(
+            status_code=HTTPStatus.OK, content=api_response.model_dump()
+        )
     except Exception as e:
         logger.error(e)
         raise e
