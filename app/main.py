@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 
 from app.exceptions.exception import CustomException
 from app.schemas.response import APIResponse, ErrorResponse
+from app.routers import faq
+from app.core.config import settings
 
 
 @asynccontextmanager
@@ -24,6 +26,9 @@ async def root():
         message="Server running successfully!",
     )
     return JSONResponse(status_code=200, content=api_response.model_dump())
+
+
+app.include_router(faq.router, prefix=settings.API_PREFIX)
 
 
 @app.exception_handler(Exception)

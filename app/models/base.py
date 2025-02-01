@@ -5,7 +5,7 @@ from sqlalchemy.sql import func
 
 @as_declarative()
 class Base:
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime,
