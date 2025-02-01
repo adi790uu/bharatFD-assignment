@@ -1,6 +1,5 @@
 from fastapi import HTTPException
-from loguru import logger
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, select
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, select, delete  # noqa
 from sqlalchemy.orm import relationship, selectinload
 from app.database.base import Base
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,14 +10,25 @@ class FAQ(Base):
 
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
-
+    language = Column(String(10), nullable=False)
     translations = relationship(
         "FAQTranslation", back_populates="faq", cascade="all, delete-orphan"
     )
 
     @classmethod
-    async def create_faq(cls, question: str, answer: str, db: AsyncSession):
-        faq_instance = cls(question=question, answer=answer)
+    async def delete_faq(cls, faq_id: int, db: AsyncSession):
+        faq_instance = await db.execute(select(cls).where(cls.id == faq_id))
+        if not faq_instance.scalars().first():
+            raise HTTPException(status_code=404, detail="FAQ not found")
+
+        await db.execute(delete(cls).where(cls.id == faq_id))
+        await db.commit()
+
+    @classmethod
+    async def create_faq(
+        cls, question: str, answer: str, language: str, db: AsyncSession
+    ):
+        faq_instance = cls(question=question, answer=answer, language=language)
         db.add(faq_instance)
         await db.commit()
         await db.refresh(faq_instance)
@@ -39,17 +49,14 @@ class FAQ(Base):
 
         for faq_instance in faqs_instances:
             for translation in faq_instance.translations:
-                logger.info(translation.language)
-                logger.info(f"lang: {lang}")
                 if translation.language == lang:
-                    logger.info("Here")
                     translated_faqs.append(
                         {
+                            "id": translation.faq_id,
                             "question": translation.translated_question,
                             "answer": translation.translated_answer,
                         }
                     )
-        logger.info(translated_faqs)
         return translated_faqs
 
 

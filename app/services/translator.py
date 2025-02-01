@@ -1,16 +1,19 @@
 from googletrans import Translator
+from app.database.session import AsyncSessionLocal
 from app.schemas.faq import FAQ as FAQSchema
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 from app.models.faq import FAQTranslation as FAQTranslationModels
+from app.core import constants
+import asyncio
 
 translator = Translator()
-SUPPORTED_LANGUAGES = ["en", "hi", "bn"]
 
 
-async def translate_text(faq: FAQSchema, db: AsyncSession):
+async def translate_text(faq: FAQSchema):
     try:
-        for lang in SUPPORTED_LANGUAGES:
+        translations = []
+
+        async def translate_and_store(lang):
             translated_question = await translator.translate(
                 text=faq.question,
                 dest=lang,
@@ -19,14 +22,21 @@ async def translate_text(faq: FAQSchema, db: AsyncSession):
                 text=faq.answer,
                 dest=lang,
             )
-
-            await FAQTranslationModels.add_faq_translation(
-                db=db,
-                translated_question=translated_question.text,
-                translated_answer=translated_answer.text,
-                faq_id=faq.id,
-                lang=lang,
+            translations.append(
+                FAQTranslationModels(
+                    faq_id=faq.id,
+                    translated_question=translated_question.text,
+                    translated_answer=translated_answer.text,
+                    language=lang,
+                )
             )
+
+        await asyncio.gather(
+            *(translate_and_store(lang) for lang in constants.SUPPORTED_LANGUAGES)
+        )
+        async with AsyncSessionLocal() as db:
+            db.add_all(translations)
+            await db.commit()
     except Exception as e:
         logger.error(e)
         raise e

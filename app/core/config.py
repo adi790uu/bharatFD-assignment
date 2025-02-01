@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     API_PREFIX: str = "/api"
     DATABASE_URL: str
+    REDIS_URL: str
 
 
 class DevelopmentSettings(Settings):

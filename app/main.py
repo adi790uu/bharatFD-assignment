@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
 
 from fastapi.responses import JSONResponse
+from loguru import logger
 
+from app.core.redis import close_redis_connection
 from app.exceptions.exception import CustomException
 from app.schemas.response import APIResponse, ErrorResponse
 from app.routers import faq
@@ -11,9 +13,16 @@ from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting the server...")
-    yield
-    print("Closing the server...")
+    try:
+        logger.info("Starting the server...")
+        yield
+        logger.info("Closing the server...")
+    except Exception as e:
+        logger.error(f"Error during startup: {e}")
+        raise
+    finally:
+        logger.info("closing Redis connection...")
+        await close_redis_connection()
 
 
 app = FastAPI(title="BharatFD", lifespan=lifespan)
@@ -31,6 +40,7 @@ async def root():
 app.include_router(faq.router, prefix=settings.API_PREFIX)
 
 
+@app.exception_handler(HTTPException)
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exception: Exception):
     if isinstance(exception, CustomException):
