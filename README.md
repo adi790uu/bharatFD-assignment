@@ -163,6 +163,10 @@ _User can select the language and faqs will be displayed._
 ![User Page](screenshots/user_1.png)
 ![User Page](screenshots/user_2.png)
 
+### Tests Results Screenshot:
+
+![Test](screenshots/test_results.png)
+
 ## Optimizations
 
 #### Translation method:
