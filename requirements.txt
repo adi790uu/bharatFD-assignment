@@ -4,12 +4,15 @@ sqlalchemy
 alembic
 psycopg2
 pydantic
+tenacity
 redis
 googletrans==4.0.0-rc1
 pydantic_settings
 loguru
 alembic
+beautifulsoup4
 asyncpg
 greenlet
 aioredis
 pytest
+jinja2
