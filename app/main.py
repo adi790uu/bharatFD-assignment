@@ -1,14 +1,20 @@
 from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
-
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from loguru import logger
-
 from app.core.redis import close_redis_connection
 from app.exceptions.exception import CustomException
 from app.schemas.response import APIResponse, ErrorResponse
 from app.routers import faq
 from app.core.config import settings
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
+
+app = FastAPI()
+
+BASE_DIR = Path(__file__).resolve().parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @asynccontextmanager
@@ -26,6 +32,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="BharatFD", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
@@ -35,6 +48,16 @@ async def root():
         message="Server running successfully!",
     )
     return JSONResponse(status_code=200, content=api_response.model_dump())
+
+
+@app.get("/user", response_class=HTMLResponse)
+async def get_user_page(request: Request):
+    return templates.TemplateResponse("user_page.html", {"request": request})
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def get_admin_page(request: Request):
+    return templates.TemplateResponse("admin_page.html", {"request": request})
 
 
 app.include_router(faq.router, prefix=settings.API_PREFIX)

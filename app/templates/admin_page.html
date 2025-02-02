@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin FAQ and User Management</title>
+    <link
+      href="https://cdn.quilljs.com/1.3.6/quill.snow.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f9f9f9;
+      }
+      .container {
+        max-width: 900px;
+        margin: auto;
+        background: #fff;
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      h1,
+      h2 {
+        text-align: center;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+      }
+      #faq-answer {
+        height: 150px;
+        background: #fff;
+      }
+      button {
+        padding: 10px 15px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      #faq-list {
+        margin-top: 20px;
+      }
+      .faq-item {
+        border: 1px solid #ddd;
+        background: #f8f8f8;
+        padding: 15px;
+        margin-bottom: 10px;
+        position: relative;
+      }
+      .faq-item h3 {
+        margin: 0;
+      }
+      .delete-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #e74c3c;
+        color: #fff;
+        border: none;
+        padding: 5px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Admin FAQ Manager & User Page</h1>
+
+      <div id="faq-form">
+        <div class="form-group">
+          <label for="faq-question">FAQ Question:</label>
+          <input
+            type="text"
+            id="faq-question"
+            placeholder="Enter the FAQ question"
+          />
+        </div>
+        <div class="form-group">
+          <label for="faq-answer">FAQ Answer:</label>
+          <div id="faq-answer"></div>
+        </div>
+        <div class="form-group">
+          <label for="faq-language">Select FAQ Language:</label>
+          <select id="faq-language">
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="bn">Bengali</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+            <option value="ru">Russian</option>
+          </select>
+        </div>
+        <button id="post-faq-btn">Post FAQ</button>
+      </div>
+
+      <hr />
+
+      <h2>Existing FAQs</h2>
+      <div id="faq-list"></div>
+    </div>
+
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script>
+      // Initialize Quill editor
+      const quill = new Quill("#faq-answer", { theme: "snow" });
+
+      // Helper: Get the currently selected language from the dropdown
+      function getSelectedLanguage() {
+        return document.getElementById("faq-language").value;
+      }
+
+      // Fetch FAQs for a specific language
+      async function fetchFaqs(language) {
+        try {
+          const response = await fetch(
+            `http://localhost:8000/api/faqs?lang=${encodeURIComponent(
+              language
+            )}`
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch FAQs");
+          }
+          const data = await response.json();
+
+          displayFaqs(data.data.faqs);
+        } catch (error) {
+          console.error("Error fetching FAQs:", error);
+        }
+      }
+
+      // Render the list of FAQs in the DOM
+      function displayFaqs(faqs) {
+        const faqList = document.getElementById("faq-list");
+        faqList.innerHTML = "";
+        if (!faqs || faqs.length === 0) {
+          faqList.innerHTML = "<p>No FAQs available for this language.</p>";
+          return;
+        }
+        faqs.forEach((faq) => {
+          const faqItem = createFaqItem(faq.id, faq.question, faq.answer);
+          faqList.appendChild(faqItem);
+        });
+      }
+
+      // Create a DOM element for an individual FAQ
+      function createFaqItem(faqId, question, answerHtml) {
+        const faqDiv = document.createElement("div");
+        faqDiv.className = "faq-item";
+        faqDiv.dataset.id = faqId;
+
+        const questionEl = document.createElement("h3");
+        questionEl.innerText = question;
+        faqDiv.appendChild(questionEl);
+
+        const answerEl = document.createElement("div");
+        answerEl.innerHTML = answerHtml;
+        faqDiv.appendChild(answerEl);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-btn";
+        deleteBtn.innerText = "Delete";
+        deleteBtn.addEventListener("click", () => deleteFaq(faqId));
+        faqDiv.appendChild(deleteBtn);
+
+        return faqDiv;
+      }
+
+      // Delete FAQ by calling the DELETE API, then re-fetch FAQs
+      async function deleteFaq(faqId) {
+        if (!confirm("Are you sure you want to delete this FAQ?")) return;
+        try {
+          const response = await fetch(
+            `http://localhost:8000/api/faqs/delete?faq_id=${faqId}`,
+            {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+          if (!response.ok) {
+            console.error("Failed to delete FAQ.");
+            return;
+          }
+          // Re-fetch FAQs for the current language after deletion
+          fetchFaqs(getSelectedLanguage());
+        } catch (error) {
+          console.error("Error deleting FAQ:", error);
+        }
+      }
+
+      // Post a new FAQ and then re-fetch the list
+      async function postFaq() {
+        const question = document.getElementById("faq-question").value.trim();
+        const answerHtml = quill.root.innerHTML.trim();
+        const language = getSelectedLanguage();
+
+        if (!question || answerHtml === "<p><br></p>") {
+          alert("Please fill out both the question and answer.");
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            "http://localhost:8000/api/faqs/create",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                question,
+                answer: answerHtml,
+                language,
+              }),
+            }
+          );
+          if (!response.ok) {
+            alert("Failed to post FAQ.");
+            return;
+          }
+          // After posting, re-fetch FAQs to refresh the list.
+          fetchFaqs(language);
+          // Clear the form
+          document.getElementById("faq-question").value = "";
+          quill.setContents([]);
+        } catch (error) {
+          console.error("Error posting FAQ:", error);
+        }
+      }
+
+      // Attach event listeners
+      document
+        .getElementById("faq-language")
+        .addEventListener("change", (event) => {
+          fetchFaqs(event.target.value);
+        });
+
+      document
+        .getElementById("post-faq-btn")
+        .addEventListener("click", postFaq);
+
+      // Initialize when DOM is ready
+      document.addEventListener("DOMContentLoaded", () => {
+        fetchFaqs(getSelectedLanguage());
+      });
+    </script>
+  </body>
+</html>

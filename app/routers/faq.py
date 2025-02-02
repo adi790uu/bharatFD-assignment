@@ -19,7 +19,7 @@ async def create_faq(request: CreateFAQRequest, db=Depends(get_db)):
         faq_dto = await faq_service.create_faq(
             question=request.question,
             answer=request.answer,
-            language=request.language,
+            language=None,
             db=db,
         )
 
@@ -49,6 +49,7 @@ async def create_faq(request: CreateFAQRequest, db=Depends(get_db)):
 @router.get("/faqs/")
 async def get_faqs(lang: str = "en", db=Depends(get_db)):
     try:
+        logger.info(lang)
         cache_key = f"faqs:{lang}"
         cached_faqs = await redis.get_redis_with_retry(cache_key)
 
@@ -78,7 +79,9 @@ async def get_faqs(lang: str = "en", db=Depends(get_db)):
 @router.delete("/faqs/delete")
 async def delete_faq(faq_id: int, db=Depends(get_db)):
     try:
+        print(faq_id)
         await faq_service.delete_faq(db=db, faq_id=faq_id)
+        await redis.flush_all_keys()
         api_response = APIResponse(
             success=True,
             message="Faq deleted successfully!",

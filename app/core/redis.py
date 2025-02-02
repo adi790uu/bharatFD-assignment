@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
 from loguru import logger
-from redis import asyncio as aioredis
+from redis import ResponseError, asyncio as aioredis
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import TimeoutError as RedisTimeoutError
 from tenacity import (
@@ -42,7 +42,9 @@ async def set_redis_with_retry(
         await _redis_set(key, value, expiration)
         return True
     except (RedisTimeoutError, RedisConnectionError) as e:
-        logger.error(f"Failed to set key {key} in Redis after retries: {str(e)}")
+        logger.error(
+            f"Failed to set key {key} in Redis after retries: {str(e)}"
+        )  # noqa
         return False
 
 
@@ -50,7 +52,9 @@ async def get_redis_with_retry(key: str) -> Optional[str]:
     try:
         return await _redis_get(key)
     except (RedisTimeoutError, RedisConnectionError) as e:
-        logger.error(f"Failed to get key {key} from Redis after retries: {str(e)}")
+        logger.error(
+            f"Failed to get key {key} from Redis after retries: {str(e)}"
+        )  # noqa
         return None
 
 
@@ -58,11 +62,34 @@ async def delete_redis_with_retry(key: str) -> Optional[str]:
     try:
         return await _redis_del(key)
     except (RedisTimeoutError, RedisConnectionError) as e:
-        logger.error(f"Failed to delete key {key} from Redis after retries: {str(e)}")
+        logger.error(
+            f"Failed to delete key {key} from Redis after retries: {str(e)}"
+        )  # noqa
+        return False
+
+
+async def flush_all_keys() -> bool:
+    try:
+        await _flush_db()
+        return True
+    except (RedisTimeoutError, RedisConnectionError, ResponseError) as e:
+        logger.error(f"Failed to flush keys from Redis after retries: {str(e)}")  # noqa
         return False
 
 
 #  private methods
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_random_exponential(multiplier=1, max=5),
+    retry=retry_if_exception_type((TimeoutError, ConnectionError)),
+    reraise=True,
+)
+async def _flush_db() -> None:
+    await redis.flushdb()
+
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_random_exponential(multiplier=1, max=5),

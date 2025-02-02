@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Page</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+
+      label {
+        font-weight: bold;
+      }
+
+      select {
+        margin-left: 10px;
+        padding: 5px;
+      }
+
+      .faq-item {
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>FAQ Page</h1>
+    <label for="language-select">Select Language:</label>
+    <select id="language-select">
+      <option value="en">English</option>
+      <option value="es">Spanish</option>
+    </select>
+
+    <div id="faq-container"></div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const languageSelect = document.getElementById("language-select");
+        const faqContainer = document.getElementById("faq-container");
+
+        languageSelect.addEventListener("change", async (event) => {
+          const selectedLang = event.target.value;
+
+          try {
+            const response = await fetch(
+              `http://localhost:8000/api/faqs?lang=${selectedLang}`
+            );
+            const data = await response.json();
+            displayFAQs(data.data.faqs);
+          } catch (error) {
+            console.error("Error fetching FAQs:", error);
+          }
+        });
+
+        function displayFAQs(faqs) {
+          faqContainer.innerHTML = "";
+          if (faqs.length === 0) {
+            faqContainer.innerHTML =
+              "<p>No FAQs available for the selected language.</p>";
+            return;
+          }
+
+          faqs.forEach((faq) => {
+            const faqElement = document.createElement("div");
+            faqElement.classList.add("faq-item");
+            faqElement.innerHTML = `
+                  <h3>${faq.question}</h3>
+                  <p>${faq.answer}</p>
+                `;
+            faqContainer.appendChild(faqElement);
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

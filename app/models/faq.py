@@ -10,7 +10,7 @@ class FAQ(Base):
 
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
-    language = Column(String(10), nullable=False)
+    language = Column(String(10), nullable=True)
     translations = relationship(
         "FAQTranslation", back_populates="faq", cascade="all, delete-orphan"
     )
@@ -26,7 +26,7 @@ class FAQ(Base):
 
     @classmethod
     async def create_faq(
-        cls, question: str, answer: str, language: str, db: AsyncSession
+        cls, question: str | None, answer: str, language: str, db: AsyncSession
     ):
         faq_instance = cls(question=question, answer=answer, language=language)
         db.add(faq_instance)

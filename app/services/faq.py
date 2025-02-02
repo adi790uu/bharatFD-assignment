@@ -3,15 +3,21 @@ from app.models.faq import FAQ as FAQModel
 from loguru import logger
 from app.services import translator as translator_service
 from app.schemas.faq import FAQ as FAQSchema
+from bs4 import BeautifulSoup
 
 
 async def create_faq(
     question: str,
     answer: str,
-    language: str,
+    language: str | None,
     db: AsyncSession,
 ):
     try:
+        soup = BeautifulSoup(answer, "html.parser")
+        parsed_answer = soup.get_text()
+
+        logger.info(parsed_answer)
+
         faq = await FAQModel.create_faq(
             question=question,
             language=language,
@@ -20,7 +26,7 @@ async def create_faq(
         )
         faq_dto = FAQSchema(
             id=faq.id,
-            answer=faq.answer,
+            answer=parsed_answer,
             question=faq.question,
         )
         await translator_service.translate_text(
