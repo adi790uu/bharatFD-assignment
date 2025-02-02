@@ -1,6 +1,6 @@
 from http import HTTPStatus
 import json
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from loguru import logger
 from app.core import redis
@@ -8,6 +8,7 @@ from app.core.deps import get_db
 from app.schemas.request import CreateFAQRequest
 from app.schemas.response import APIResponse
 from app.services import faq as faq_service
+from app.core import constants
 
 
 router = APIRouter()
@@ -16,10 +17,15 @@ router = APIRouter()
 @router.post("/faqs/create")
 async def create_faq(request: CreateFAQRequest, db=Depends(get_db)):
     try:
+        if request.language not in constants.SUPPORTED_LANGUAGES:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Language '{request.language}' is not supported.",
+            )
         faq_dto = await faq_service.create_faq(
             question=request.question,
             answer=request.answer,
-            language=None,
+            language=request.language,
             db=db,
         )
 
@@ -36,6 +42,7 @@ async def create_faq(request: CreateFAQRequest, db=Depends(get_db)):
         api_response = APIResponse(
             success=True,
             message="FAQ created successfully!",
+            data=faq_dto.model_dump(),
         )
 
         return JSONResponse(
@@ -49,7 +56,11 @@ async def create_faq(request: CreateFAQRequest, db=Depends(get_db)):
 @router.get("/faqs/")
 async def get_faqs(lang: str = "en", db=Depends(get_db)):
     try:
-        logger.info(lang)
+        if lang not in constants.SUPPORTED_LANGUAGES:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail=f"Language '{lang}' is not supported.",
+            )
         cache_key = f"faqs:{lang}"
         cached_faqs = await redis.get_redis_with_retry(cache_key)
 

@@ -32,7 +32,10 @@ async def translate_text(faq: FAQSchema):
             )
 
         await asyncio.gather(
-            *(translate_and_store(lang) for lang in constants.SUPPORTED_LANGUAGES)
+            *(
+                translate_and_store(lang)
+                for lang in constants.SUPPORTED_LANGUAGES  # noqa
+            )
         )
         async with AsyncSessionLocal() as db:
             db.add_all(translations)

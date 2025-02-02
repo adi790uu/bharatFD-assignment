@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api"
     DATABASE_URL: str
     REDIS_URL: str
+    TEST_DATABASE_URL: str = None
 
 
 class DevelopmentSettings(Settings):

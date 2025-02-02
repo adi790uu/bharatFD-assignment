@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from loguru import logger
 from app.core.redis import close_redis_connection
 from app.exceptions.exception import CustomException
